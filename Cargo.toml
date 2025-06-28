@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 url = "1.7"
+anyhow = "1.0"
+percent-encoding = "2.3"
