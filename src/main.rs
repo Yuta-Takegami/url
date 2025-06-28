@@ -1,14 +1,65 @@
 use percent_encoding::percent_decode;
-use std::env;
-use anyhow::{ensure, Context, Error, Result};
+//use std::env;
+use std::io::{self, Read};
+use anyhow::{Error, Ok, Result};
+use structopt::StructOpt;
+use atty::Stream;
+use log::*;
+use pretty_env_logger;
 
-fn main() -> Result<(), Error> {
-    let args: Vec<String> = env::args().collect();
-    let input = &args[1];
+#[derive(StructOpt, Debug)]
+struct Opt {
+    #[structopt(name = "INPUT")]
+    input: Option<String>,
+}
+
+fn is_stdin(input: Option<&String>) -> bool {
+    let is_request = match input {
+        Some(i) if i == "-" => true,
+        _ => false,
+    };
+
+    let is_pipe =! atty::is(Stream::Stdin);
+
+    is_request || is_pipe
+}
+
+fn read_from_stdin() -> Result<String> {
+    let mut buf = String::new();
+    let stdin = io::stdin();
+    let mut handle = stdin.lock();
+    handle.read_to_string(&mut buf)?;
+
+    Ok(buf)
+}
+
+fn main() -> Result<()> {
+    //let args: Vec<String> = env::args().collect();
+    //let input = &args[1];
+
+    pretty_env_logger::init();
+
+    let opt = Opt::from_args();
+    debug!("opt: {:?}", opt);
+
+    if opt.input.is_none() && ! is_stdin(opt.input.as_ref()) {
+        Opt::clap().print_help()?;
+
+        std::process::exit(1);
+    }
+
+    let input = match opt.input {
+        Some(i) => i,
+        None => read_from_stdin()?
+    };
+
+    if input.is_empty(){
+        Opt::clap().get_matches().usage();
+    }
 
     //let input = "foo%20bar";
     //let decoded = percent_decode(input.as_bytes()).decode_utf8();
-    Ok(println!("{}", decode(input)?))
+    Ok(println!("{}", decode(&input)?))
 }
 
 fn decode(input: &str) -> Result<String, Error>{
